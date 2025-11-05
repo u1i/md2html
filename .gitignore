@@ -1,0 +1,26 @@
+# Binaries
+md2html
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output coverage
+*.out
+
+# Go workspace file
+go.work
+
+# Generated HTML files (optional)
+*.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
