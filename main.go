@@ -55,8 +55,11 @@ func convertMarkdownToHTML(inputFile, outputFile, fontFamily, title string) erro
 	// Get the directory of the input file for resolving relative image paths
 	inputDir := filepath.Dir(inputFile)
 
+	// Rewrite .md links to .html links
+	processedContent := rewriteMarkdownLinks(string(mdContent))
+
 	// Process images and embed them as base64
-	processedContent, err := embedImages(string(mdContent), inputDir)
+	processedContent, err = embedImages(processedContent, inputDir)
 	if err != nil {
 		return fmt.Errorf("failed to process images: %w", err)
 	}
@@ -81,6 +84,66 @@ func convertMarkdownToHTML(inputFile, outputFile, fontFamily, title string) erro
 	}
 
 	return nil
+}
+
+func rewriteMarkdownLinks(mdContent string) string {
+	// Regex to match markdown link syntax: [text](url)
+	// But NOT image syntax: ![text](url)
+	linkRegex := regexp.MustCompile(`(?m)([^!])\[([^\]]*)\]\(([^)]+)\)`)
+
+	result := linkRegex.ReplaceAllStringFunc(mdContent, func(match string) string {
+		// Extract the parts
+		parts := linkRegex.FindStringSubmatch(match)
+		if len(parts) < 4 {
+			return match
+		}
+
+		prefix := parts[1]  // Character before the link (to exclude images)
+		linkText := parts[2]
+		linkURL := parts[3]
+
+		// Skip if it's an HTTP/HTTPS URL
+		if strings.HasPrefix(linkURL, "http://") || 
+		   strings.HasPrefix(linkURL, "https://") ||
+		   strings.HasPrefix(linkURL, "#") {  // Also skip anchor links
+			return match
+		}
+
+		// Check if it's a .md file and rewrite to .html
+		if strings.HasSuffix(linkURL, ".md") {
+			linkURL = strings.TrimSuffix(linkURL, ".md") + ".html"
+		}
+
+		return fmt.Sprintf("%s[%s](%s)", prefix, linkText, linkURL)
+	})
+
+	// Handle links at the start of a line (no prefix character)
+	startLinkRegex := regexp.MustCompile(`(?m)^\[([^\]]*)\]\(([^)]+)\)`)
+	result = startLinkRegex.ReplaceAllStringFunc(result, func(match string) string {
+		parts := startLinkRegex.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+
+		linkText := parts[1]
+		linkURL := parts[2]
+
+		// Skip if it's an HTTP/HTTPS URL or anchor
+		if strings.HasPrefix(linkURL, "http://") || 
+		   strings.HasPrefix(linkURL, "https://") ||
+		   strings.HasPrefix(linkURL, "#") {
+			return match
+		}
+
+		// Check if it's a .md file and rewrite to .html
+		if strings.HasSuffix(linkURL, ".md") {
+			linkURL = strings.TrimSuffix(linkURL, ".md") + ".html"
+		}
+
+		return fmt.Sprintf("[%s](%s)", linkText, linkURL)
+	})
+
+	return result
 }
 
 func embedImages(mdContent, baseDir string) (string, error) {
