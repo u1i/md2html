@@ -77,7 +77,7 @@ func main() {
 
 ## Images
 
-![Sample Image](./image.png)
+![Sample Image](./example.png)
 
 > This is a blockquote with some wisdom.
 
